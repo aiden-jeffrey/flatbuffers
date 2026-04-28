@@ -160,17 +160,6 @@ func write_aligned_offset(p_offset: int) -> void:
   # TODO: understand how this works...
   self.write_u32(self.offset() - p_offset + 4)
 
-## write_field methods are for building tables
-## TODO: should we define these??
-func write_field_s8(p_field_index: int, p_value: int, p_has_default: bool, p_default: int) -> void:
-  if self.force_defaults || (p_has_default && p_value != p_default):
-    self.write_aligned_s8(p_value)
-    self.curr_vtable.add(p_field_index, self.offset())
-
-func write_field_u8(p_field_index: int, p_value: int):
-  self.write_aligned_u8(p_value)
-  self.curr_vtable.add(p_field_index, self.offset())
-
 func start_table() -> bool:
   if self.curr_vtable != null:
     error_state = ErrorState.WRITE_STATE_IMPROPER_USE
@@ -297,14 +286,3 @@ func vtables_equal(va: int, vb: int) -> bool:
       return false
 
   return true
-
-# func is_equal_to_curr_table(p_vtable_offset: int, p_table_len: int) -> bool:
-#   var vlength = (self.curr_vtable.num_fields + 2) * 2
-#   if vlength != self.buffer.bytes.decode_u16(p_vtable_offset):
-#     return false
-
-#   if p_table_len != self.buffer.bytes.decode_u16(p_vtable_offset + 2):
-#     return false
-
-#   for i in range(0, self.curr_vtable.num_fields):
-#     if

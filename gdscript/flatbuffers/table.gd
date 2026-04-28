@@ -57,13 +57,3 @@ func _get_voffset(p_vtable_offset: int) -> int:
 # Read address at p_offset and return the resulting absolute address
 func _get_indirect(p_offset: int) -> int:
   return p_offset + self.buffer.bytes.decode_u32(p_offset)
-
-# TODO: generics?
-# Reads a union value and returns a new Table/Struct/String if the field exists,
-# and null if not
-#func _make_table(p_offset: int) -> FB__Table:
-  #var offset = self._get_indirect(self.start_offset + p_offset)
-  #if offset != 0:
-  #return FB__Table.new(self.buffer, offset)
-  #else:
-  #return null
