@@ -2797,7 +2797,7 @@ bool Parser::SupportsOptionalScalars(const flatbuffers::IDLOptions& opts) {
       IDLOptions::kKotlin | IDLOptions::kKotlinKmp | IDLOptions::kCpp |
       IDLOptions::kJava | IDLOptions::kCSharp | IDLOptions::kTs |
       IDLOptions::kBinary | IDLOptions::kGo | IDLOptions::kPython |
-      IDLOptions::kJson | IDLOptions::kNim;
+      IDLOptions::kJson | IDLOptions::kNim | IDLOptions::kGDScript;
   unsigned long langs = opts.lang_to_generate;
   return (langs > 0 && langs < IDLOptions::kMAX) && !(langs & ~supported_langs);
 }
@@ -2827,7 +2827,7 @@ bool Parser::SupportsAdvancedArrayFeatures() const {
           ~(IDLOptions::kCpp | IDLOptions::kPython | IDLOptions::kJava |
             IDLOptions::kCSharp | IDLOptions::kJsonSchema | IDLOptions::kJson |
             IDLOptions::kBinary | IDLOptions::kRust | IDLOptions::kTs |
-            IDLOptions::kSwift)) == 0;
+            IDLOptions::kSwift | IDLOptions::kGDScript)) == 0;
 }
 
 bool Parser::Supports64BitOffsets() const {
@@ -4135,7 +4135,7 @@ bool StructDef::Deserialize(Parser& parser, const reflection::Object* object) {
   for (uoffset_t i = 0; i < of.size(); i++) {
   uint16_t field_id = of.Get(i)->id();
   if (field_id >= of.size()) {
-    parser.error_ = "Field ID " + std::to_string(field_id) + 
+    parser.error_ = "Field ID " + std::to_string(field_id) +
                     " exceeds field count " + std::to_string(of.size());
     return false;
   }
