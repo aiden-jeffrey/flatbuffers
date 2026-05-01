@@ -43,3 +43,14 @@ func double_capacity() -> bool:
   self.position = _capacity
 
   return true
+
+func has_identifier(p_id: String) -> bool:
+  if p_id.length() != FB__Constants.FILE_IDENTIFIER_LENGTH:
+    printerr("invalid ident string %s", p_id)
+    return false
+
+  for i in range(0, FB__Constants.FILE_IDENTIFIER_LENGTH):
+    if ord(p_id[i]) != self.bytes.decode_u8(self.position + 4 + i):
+      return false
+
+  return true

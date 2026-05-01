@@ -158,12 +158,12 @@ class GdscriptGenerator : public BaseGenerator {
     code += enum_def.ToString(ev) + ", ";
   }
 
-  // Initialize a new struct or table from existing data.
-  void NewRootTypeFromBuffer(const StructDef& struct_def,
+  void GenTableStaticMethods(const StructDef& struct_def,
                              std::string* code_ptr) const {
     auto& code = *code_ptr;
     const std::string struct_type = namer_.Type(struct_def);
 
+    // ctors from buffer
     // TODO: support root struct here...
     code += "static func get_root_as";
     code += "(p_buffer: FB__ByteBuffer) -> " + struct_type + ":\n";
@@ -171,6 +171,24 @@ class GdscriptGenerator : public BaseGenerator {
     code += Indent + "var root_offset = pos + p_buffer.bytes.decode_u32(pos)\n";
     code += Indent + "return " + struct_type + ".new(p_buffer, root_offset)\n";
     code += "\n";
+
+    code += "static func get_size_prefixed_root_as";
+    code += "(p_buffer: FB__ByteBuffer) -> " + struct_type + ":\n";
+    code += Indent + "p_buffer.position += FB__Constants.FILE_IDENTIFIER_LENGTH\n";
+    code += Indent + "var pos = p_buffer.position\n";
+    code += Indent + "var root_offset = pos + p_buffer.bytes.decode_u32(pos)\n";
+    code += Indent + "return " + struct_type + ".new(p_buffer, root_offset)\n";
+    code += "\n";
+
+    if (!struct_def.fixed && parser_.root_struct_def_ == &struct_def &&
+        !parser_.file_identifier_.empty()) {
+      // id checker
+      code += "static func buffer_has_identifier";
+      code += "(p_buffer: FB__ByteBuffer) -> bool:\n";
+      code += Indent + "return p_buffer.has_identifier(\"";
+      code += parser_.file_identifier_ + "\")\n";
+      code += "\n";
+    }
   }
 
   // Initialize an existing object with other data, to avoid an allocation.
@@ -623,8 +641,34 @@ class GdscriptGenerator : public BaseGenerator {
     code += Indent + "builder.start_table()\n\n";
   }
 
+  void GenBufferFinish(const StructDef& struct_def,
+                       std::string* code_ptr,
+                       bool size_prefix) const {
+    if (parser_.root_struct_def_ != &struct_def) {
+      // only generate buffer finish for root table
+      return;
+    }
+
+    auto& code = *code_ptr;
+    const auto struct_type = namer_.Type(struct_def);
+    std::string method_name = size_prefix ? "finish_buffer_size_prefixed" : "finish_buffer";
+
+    code += "static func " + method_name + "(builder: FB__Builder, p_offset: int) -> void:\n";
+    code += Indent + "builder.finish_buffer(p_offset";
+    if (!parser_.file_identifier_.empty()) {
+      code += ", \"" + parser_.file_identifier_ + "\"";
+    }
+    if (size_prefix) {
+      if (parser_.file_identifier_.empty()) {
+        code += ", \"\"";
+      }
+      code += ", true";
+    }
+    code += ")\n\n";
+  }
+
   void GetEndOfTable(const StructDef& struct_def,
-                       std::string* code_ptr) const {
+                     std::string* code_ptr) const {
     auto& code = *code_ptr;
     const auto struct_type = namer_.Type(struct_def);
     // Generate method with struct name.
@@ -839,6 +883,8 @@ class GdscriptGenerator : public BaseGenerator {
       }
     }
     GetEndOfTable(struct_def, code_ptr);
+    GenBufferFinish(struct_def, code_ptr, true);
+    GenBufferFinish(struct_def, code_ptr, false);
 
     BeginBuilderArgs(struct_def, code_ptr);
     TableBuilderArgs(struct_def, "p_", "_", code_ptr);
@@ -857,7 +903,7 @@ class GdscriptGenerator : public BaseGenerator {
     if (!struct_def.fixed) {
       // Generate a special accessor for the table that has been declared as
       // the root type.
-      NewRootTypeFromBuffer(struct_def, code_ptr);
+      GenTableStaticMethods(struct_def, code_ptr);
     } else {
       // Generates the SizeOf method for all structs.
       GenStructSizeOf(struct_def, code_ptr);

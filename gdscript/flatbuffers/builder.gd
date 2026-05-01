@@ -10,7 +10,7 @@ var vtable_offsets   : Array[int] = []
 var force_defaults   : bool = false
 # TODO: add shared strings...
 
-enum ErrorState {OK, BUFFER_GROW_FAILURE, WRITE_STATE_IMPROPER_USE}
+enum ErrorState {OK, BUFFER_GROW_FAILURE, WRITE_STATE_IMPROPER_USE, FINISH_INVALID_FILE_ID}
 
 var error_state: ErrorState = ErrorState.OK
 
@@ -243,19 +243,33 @@ func finish_vector() -> int:
   self.write_u32(self.curr_vector_size)
   return self.offset()
 
-func finish(p_root_table: int, _p_opt_file_id: String = "", p_opt_size_prefix: bool = false) -> bool:
+func finish(p_root_table: int, p_opt_file_id: String = "", p_opt_size_prefix: bool = false) -> bool:
   if self.error_state != ErrorState.OK:
+    printerr("builder in error state %s, can't finish" % self.error_state)
     return false
 
-  # TODO: add support for _p_opt_file_id
   var size_prefix = 4 if p_opt_size_prefix else 0
+  if (p_opt_file_id != ""):
+    const req_len = FB__Constants.FILE_IDENTIFIER_LENGTH
+    if p_opt_file_id.length() == req_len:
+      self.prep(self.min_align, 4 + req_len + size_prefix)
+      for i in range(req_len - 1, -1, -1):
+        self.write_u8(ord(p_opt_file_id[i]))
+    else:
+      printerr("invalid file_id: %s" % p_opt_file_id)
+      error_state = ErrorState.FINISH_INVALID_FILE_ID
+
   self.prep(self.min_align, 4 + size_prefix)
   self.write_aligned_offset(p_root_table)
   if size_prefix:
     self.write_aligned_u32(self.buffer.capacity() - self.head)
   self.buffer.position = self.head
 
-  return self.error_state == ErrorState.OK
+  if self.error_state == ErrorState.OK:
+    return true
+  else:
+    printerr("builder error %s" % self.error_state)
+    return false
 
 ## inner classes
 # TODO: tbh this should probably live in the FB__Table class...
