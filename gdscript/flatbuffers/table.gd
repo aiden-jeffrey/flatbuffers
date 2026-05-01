@@ -31,6 +31,7 @@ func _make_string(p_offset: int) -> String:
   var slice = self.buffer.bytes.slice(offset, offset + str_len)
   return slice.get_string_from_utf8()
 
+# Copy
 # TODO: can i just return a table and cast it afterwards??
 func _sub_table(p_target: FB__Table, p_offset: int) -> FB__Table:
   p_target.buffer = self.buffer

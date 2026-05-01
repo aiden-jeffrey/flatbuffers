@@ -95,7 +95,7 @@ static const Namer::Config kConfig = {
 
 // Hardcode spaces per indentation.
 static const CommentConfig def_comment = {nullptr, "#", nullptr};
-static const std::string Indent = "  ";
+static const std::string _indent = "  ";
 
 // NB: copying this limitation from the ts bindings - presumably can't create a table
 //     that contains structs because they need to be added inline...
@@ -125,9 +125,9 @@ class GdscriptGenerator : public BaseGenerator {
   // this is the prefix code for that.
   std::string OffsetPrefix(const FieldDef& field) const {
     return "\n" +
-      Indent +
+      _indent +
       "var voffset = self._get_voffset(" + NumToString(field.value.offset) + ")\n" +
-      Indent +
+      _indent +
       "if voffset != 0:\n";
   }
 
@@ -148,15 +148,19 @@ class GdscriptGenerator : public BaseGenerator {
 
   void EndEnum(std::string* code_ptr) const {
     auto& code = *code_ptr;
-    code += "}\n";
+    code += "}\n\n";
   }
 
   // Starts a new line and then indents.
+  std::string Indent(int level) const {
+    return std::string(_indent, level);
+  }
+
   std::string GenIndents(int level) const {
     std::string out = "\n";
     int num = level - 1;
     for (int i = 0; i < num; i++) {
-      out += Indent;
+      out += _indent;
     }
     return out;
   }
@@ -179,17 +183,17 @@ class GdscriptGenerator : public BaseGenerator {
     // TODO: support root struct here...
     code += "static func get_root_as";
     code += "(p_buffer: FB__ByteBuffer) -> " + struct_type + ":\n";
-    code += Indent + "var pos = p_buffer.position\n";
-    code += Indent + "var root_offset = pos + p_buffer.bytes.decode_u32(pos)\n";
-    code += Indent + "return " + struct_type + ".new(p_buffer, root_offset)\n";
+    code += _indent + "var pos = p_buffer.position\n";
+    code += _indent + "var root_offset = pos + p_buffer.bytes.decode_u32(pos)\n";
+    code += _indent + "return " + struct_type + ".new(p_buffer, root_offset)\n";
     code += "\n";
 
     code += "static func get_size_prefixed_root_as";
     code += "(p_buffer: FB__ByteBuffer) -> " + struct_type + ":\n";
-    code += Indent + "p_buffer.position += FB__Constants.FILE_IDENTIFIER_LENGTH\n";
-    code += Indent + "var pos = p_buffer.position\n";
-    code += Indent + "var root_offset = pos + p_buffer.bytes.decode_u32(pos)\n";
-    code += Indent + "return " + struct_type + ".new(p_buffer, root_offset)\n";
+    code += _indent + "p_buffer.position += FB__Constants.FILE_IDENTIFIER_LENGTH\n";
+    code += _indent + "var pos = p_buffer.position\n";
+    code += _indent + "var root_offset = pos + p_buffer.bytes.decode_u32(pos)\n";
+    code += _indent + "return " + struct_type + ".new(p_buffer, root_offset)\n";
     code += "\n";
 
     if (!struct_def.fixed && parser_.root_struct_def_ == &struct_def &&
@@ -197,7 +201,7 @@ class GdscriptGenerator : public BaseGenerator {
       // id checker
       code += "static func buffer_has_identifier";
       code += "(p_buffer: FB__ByteBuffer) -> bool:\n";
-      code += Indent + "return p_buffer.has_identifier(\"";
+      code += _indent + "return p_buffer.has_identifier(\"";
       code += parser_.file_identifier_ + "\")\n";
       code += "\n";
     }
@@ -212,7 +216,7 @@ class GdscriptGenerator : public BaseGenerator {
 
     GenReceiver(struct_def, code_ptr);
     code += "_init(p_buffer: FB__ByteBuffer, p_offset: int) -> void:\n";
-    code += Indent + "super(p_buffer, p_offset, " + is_struct + ")\n";
+    code += _indent + "super(p_buffer, p_offset, " + is_struct + ")\n";
     code += "\n";
   }
 
@@ -227,7 +231,7 @@ class GdscriptGenerator : public BaseGenerator {
     if (!IsArray(field.value.type)) {
       // vector
       code += OffsetPrefix(field);
-      code += Indent + Indent + Indent + "return self._vector_len(voffset)";
+      code += _indent + _indent + _indent + "return self._vector_len(voffset)";
       code += GenIndents(2) + "return 0\n\n";
     } else {
       // fixed length array
@@ -264,7 +268,7 @@ class GdscriptGenerator : public BaseGenerator {
     GenReceiver(struct_def, code_ptr);
     code += namer_.Method(field);
     code += "() -> " + GdTypeName(field) + ":\n";
-    code += Indent + "return " + getter + "self.start_offset + self._get_voffset(";
+    code += _indent + "return " + getter + "self.start_offset + self._get_voffset(";
     code += NumToString(field.value.offset) + "))\n\n";
   }
 
@@ -285,7 +289,7 @@ class GdscriptGenerator : public BaseGenerator {
     } else if (is_enum) {
       getter += " as " + GdTypeName(field);
     }
-    code += Indent + Indent + "return " + getter + "\n";
+    code += _indent + _indent + "return " + getter + "\n";
     std::string default_value;
     if (field.IsScalarOptional()) {
       default_value = "null";
@@ -299,7 +303,7 @@ class GdscriptGenerator : public BaseGenerator {
     if (is_enum) {
       default_value += " as " + GdTypeName(field);
     }
-    code += Indent + "return " + default_value + "\n\n";
+    code += _indent + "return " + default_value + "\n\n";
   }
 
   // Get a struct by initializing an existing struct.
@@ -312,11 +316,11 @@ class GdscriptGenerator : public BaseGenerator {
     GenReceiver(struct_def, code_ptr);
     code += namer_.Method(field);
     code += "(p_struct: " + TypeName(field) + " = null) -> " + TypeName(field) + ":\n";
-    code += Indent + "if p_struct == null:\n";
-    code += Indent + Indent + "return " + TypeName(field);
+    code += _indent + "if p_struct == null:\n";
+    code += _indent + _indent + "return " + TypeName(field);
     code += ".new(self.buffer, " + offset_str + ")\n";
-    code += Indent + "else:\n";
-    code += Indent + Indent + "return self._sub_table(p_struct, " + offset_str + ")\n";
+    code += _indent + "else:\n";
+    code += _indent + _indent + "return self._sub_table(p_struct, " + offset_str + ")\n";
   }
 
   // Get the value of a fixed size array.
@@ -332,11 +336,11 @@ class GdscriptGenerator : public BaseGenerator {
     code += namer_.Method(field);
 
     code += "(p_index: int, p_struct: " + TypeName(field) + " = null) -> " + TypeName(field) + ":\n";
-    code += Indent + "if p_struct == null:\n";
-    code += Indent + Indent + "return " + TypeName(field);
+    code += _indent + "if p_struct == null:\n";
+    code += _indent + _indent + "return " + TypeName(field);
     code += ".new(self.buffer, " + offset_str + ")\n";
-    code += Indent + "else:\n";
-    code += Indent + Indent + "return self._sub_table(p_struct, " + offset_str + ")\n\n";
+    code += _indent + "else:\n";
+    code += _indent + _indent + "return self._sub_table(p_struct, " + offset_str + ")\n\n";
   }
 
   // Get the value of a vector's non-struct member. Uses a named return
@@ -346,8 +350,8 @@ class GdscriptGenerator : public BaseGenerator {
     auto& code = *code_ptr;
     GenReceiver(struct_def, code_ptr);
     code += namer_.Method(field);
-    code += "(p_index: int) -> " + GdTypeName(field, false, true) +":\n";
-    code += Indent + "return " + GenGetter(field.value.type);
+    code += "(p_index: int) -> " + GdTypeName(field) +":\n";
+    code += _indent + "return " + GenGetter(field.value.type);
     code += "self.start_offset + " + NumToString(field.value.offset);
     code += " + p_index * " + NumToString(InlineSize(field.value.type.VectorType())) + ")\n\n";
   }
@@ -364,16 +368,16 @@ class GdscriptGenerator : public BaseGenerator {
     bool is_struct = field.value.type.struct_def->fixed;
     if (is_struct) {
       // struct so read directly
-      code += Indent + Indent + "var offset = self.start_offset + voffset\n";
+      code += _indent + _indent + "var offset = self.start_offset + voffset\n";
     } else {
       // table so build table
-      code += Indent + Indent;
+      code += _indent + _indent;
       code += "var offset = self._get_indirect(self.start_offset + voffset)\n";
     }
 
-    code += Indent + Indent + "return " + TypeName(field);
+    code += _indent + _indent + "return " + TypeName(field);
     code += ".new(self.buffer, offset)\n";
-    code += Indent + "return null\n\n";
+    code += _indent + "return null\n\n";
   }
 
   // Get the value of a string.
@@ -386,9 +390,9 @@ class GdscriptGenerator : public BaseGenerator {
     code += "() -> String:";
 
     code += OffsetPrefix(field);
-    code += Indent + Indent + "return " + GenGetter(field.value.type);
+    code += _indent + _indent + "return " + GenGetter(field.value.type);
     code += "self.start_offset + voffset)\n";
-    code += Indent + "return \"\"\n\n";
+    code += _indent + "return \"\"\n\n";
   }
 
   // Get the value of a union from an object.
@@ -402,12 +406,12 @@ class GdscriptGenerator : public BaseGenerator {
     code += namer_.Method(field) + "(p_target: FB__Table) -> FB__Table:";
     code += OffsetPrefix(field);
 
-    code += Indent + Indent;
+    code += _indent + _indent;
     code += "var offset = self._get_indirect(self.start_offset + voffset)\n";
 
-    code += Indent + Indent;
+    code += _indent + _indent;
     code += "return self._sub_table(p_target, offset)\n";
-    code += Indent + "return null\n\n";
+    code += _indent + "return null\n\n";
   }
 
 
@@ -445,17 +449,17 @@ class GdscriptGenerator : public BaseGenerator {
     code += "(p_index: int)";
     code += " -> " + TypeName(field) + ":";
     code += OffsetPrefix(field);
-    code += Indent + Indent;
+    code += _indent + _indent;
     code += "var elem = self._vector_start(self.start_offset + voffset)\n";
-    code += Indent + Indent;
+    code += _indent + _indent;
     code += "elem += p_index * " + NumToString(InlineSize(vectortype)) + "\n";
     if (!is_struct) {
       // table, so it's a pointer
-      code += Indent + Indent + "elem = self._get_indirect(elem)\n";
+      code += _indent + _indent + "elem = self._get_indirect(elem)\n";
     }
-    code += Indent + Indent;
+    code += _indent + _indent;
     code += "return " + TypeName(field) + ".new(self.buffer, elem)\n";
-    code += Indent + "return null\n\n";
+    code += _indent + "return null\n\n";
   }
 
   // Get the value of a vector's non-struct member. Uses a named return
@@ -471,17 +475,17 @@ class GdscriptGenerator : public BaseGenerator {
     code += "(p_index: int)";
     code += " -> " + GdTypeName(field) + ":";
     code += OffsetPrefix(field);
-    code += Indent + Indent;
+    code += _indent + _indent;
     code += "var elem = self._vector_start(self.start_offset + voffset)\n";
-    code += Indent + Indent;
+    code += _indent + _indent;
     code += "elem += p_index * " + NumToString(InlineSize(vectortype)) + "\n";
-    code += Indent + Indent;
+    code += _indent + _indent;
     code += "return " + GenGetter(field.value.type) + "elem)\n";
     if (IsString(vectortype)) {
-      code += Indent + "return \"\"\n";
+      code += _indent + "return \"\"\n";
     } else {
       // TODO: return null here??
-      code += Indent + "return 0\n";
+      code += _indent + "return 0\n";
     }
     code += "\n";
   }
@@ -512,7 +516,8 @@ class GdscriptGenerator : public BaseGenerator {
   void StructBuilderArgs(const StructDef& struct_def,
                          const std::string nameprefix,
                          const std::string fieldname_suffix,
-                         std::string* code_ptr, bool parent_struct_array = false) const {
+                         std::string* code_ptr,
+                         bool parent_struct_array = false) const {
     for (auto it = struct_def.fields.vec.begin();
          it != struct_def.fields.vec.end(); ++it) {
       auto& field = **it;
@@ -532,7 +537,9 @@ class GdscriptGenerator : public BaseGenerator {
         auto& code = *code_ptr;
         code += std::string(", ") + nameprefix;
         code += namer_.Field(field);
-        code += ": " + GdTypeName(field, parent_struct_array);
+        code += ": " + (parent_struct_array || is_array
+          ? GdArrayTypeName(field)
+          : GdTypeName(field));
       }
     }
   }
@@ -548,13 +555,13 @@ class GdscriptGenerator : public BaseGenerator {
 
   void TableBuilderArgs(const StructDef& struct_def,
                         const std::string nameprefix,
-                        std::string* code_ptr, bool parent_struct_array = false) const {
+                        std::string* code_ptr) const {
     for (auto it = struct_def.fields.vec.begin();
          it != struct_def.fields.vec.end(); ++it) {
       auto& field = **it;
       auto& code = *code_ptr;
       code += std::string(", ") + TableBuilderFieldName(field, nameprefix);
-      code += ": " + GdTypeName(field, parent_struct_array);
+      code += ": " + GdTypeName(field);
     }
   }
 
@@ -563,7 +570,7 @@ class GdscriptGenerator : public BaseGenerator {
     auto& code = *code_ptr;
     const std::string struct_name = namer_.Type(struct_def);
 
-    code += Indent + struct_name + ".begin(p_builder)\n";
+    code += _indent + struct_name + ".begin(p_builder)\n";
     for (auto it = struct_def.fields.vec.begin();
          it != struct_def.fields.vec.end(); ++it) {
       auto& field = **it;
@@ -572,12 +579,12 @@ class GdscriptGenerator : public BaseGenerator {
       // TODO: add deprecated checks across the board
 
       if (field.IsScalarOptional()) {
-        code += Indent + "if " + arg_name + " != null:\n" + Indent;
+        code += _indent + "if " + arg_name + " != null:\n" + _indent;
       }
-      code += Indent + struct_name + ".add_" + field_name + "(";
+      code += _indent + struct_name + ".add_" + field_name + "(";
       code += "p_builder, " + arg_name + ")\n";
-      code += Indent + "return " + struct_name + ".end(p_builder)\n";
     }
+    code += _indent + "return " + struct_name + ".end(p_builder)\n";
   }
 
   // End the creator function signature.
@@ -639,7 +646,7 @@ class GdscriptGenerator : public BaseGenerator {
 
   void EndBuilderBody(std::string* code_ptr) const {
     auto& code = *code_ptr;
-    code += "\n" + Indent + "return p_builder.offset()\n";
+    code += "\n" + _indent + "return p_builder.offset()\n";
   }
 
   void GetStartOfTable(const StructDef& struct_def,
@@ -651,7 +658,7 @@ class GdscriptGenerator : public BaseGenerator {
     code += "\n## Builder static functions\n\n";
 
     code += "static func begin(p_builder: FB__Builder) -> void:\n";
-    code += Indent + "p_builder.start_table()\n\n";
+    code += _indent + "p_builder.begin_table()\n\n";
   }
 
   void GenBufferFinish(const StructDef& struct_def,
@@ -667,7 +674,7 @@ class GdscriptGenerator : public BaseGenerator {
     std::string method_name = size_prefix ? "finish_buffer_size_prefixed" : "finish_buffer";
 
     code += "static func " + method_name + "(builder: FB__Builder, p_offset: int) -> void:\n";
-    code += Indent + "builder.finish_buffer(p_offset";
+    code += _indent + "builder.finish_buffer(p_offset";
     if (!parser_.file_identifier_.empty()) {
       code += ", \"" + parser_.file_identifier_ + "\"";
     }
@@ -686,8 +693,8 @@ class GdscriptGenerator : public BaseGenerator {
     const auto struct_type = namer_.Type(struct_def);
     // Generate method with struct name.
 
-    code += "static func end(builder: FB__Builder) -> void:\n";
-    code += Indent + "builder.finish_table()\n\n";
+    code += "static func end(builder: FB__Builder) -> int:\n";
+    code += _indent + "return builder.end_table()\n\n";
   }
 
   // Set the value of a table's field.
@@ -712,17 +719,16 @@ class GdscriptGenerator : public BaseGenerator {
 
     const std::string field_var = "p_" + namer_.Variable(field) + (is_pointer ? "_offset" : "");
     const std::string field_method = namer_.Method(field);
-    const std::string field_ty = GenFieldTy(field);
 
     code += "static func add_" + field_method;
     code += "(p_builder: FB__Builder, " + field_var + ": " + GdTypeName(field) + ")";
     code += " -> void:\n";
 
-    std::string next_block_indent = Indent;
+    std::string next_block_indent = _indent;
     if (default_value != "null") {
-      code += Indent + "var default_value = " + default_value + "\n\n";
-      code += Indent + "if p_builder.force_defaults || (" + field_var + " != default_value):\n";
-      next_block_indent += Indent;
+      code += _indent + "var default_value = " + default_value + "\n\n";
+      code += _indent + "if p_builder.force_defaults || (" + field_var + " != default_value):\n";
+      next_block_indent += _indent;
     }
 
     code += next_block_indent + "p_builder.write_aligned_";
@@ -752,7 +758,7 @@ class GdscriptGenerator : public BaseGenerator {
     code += "static func " + name;
     code += "_vector(p_builder: FB__Builder, p_num_elems: int):\n";
 
-    code += Indent + "return p_builder.start_vector(";
+    code += _indent + "return p_builder.start_vector(";
     code += NumToString(elem_size);
     code += ", p_num_elems, " + NumToString(alignment);
     code += ")\n\n";
@@ -780,12 +786,12 @@ class GdscriptGenerator : public BaseGenerator {
 
     auto alignment = InlineAlignment(vector_type);
     auto elem_size = InlineSize(vector_type);
-    code += Indent + "p_builder.start_vector(" + NumToString(elem_size);
+    code += _indent + "p_builder.start_vector(" + NumToString(elem_size);
     code += ", data.size(), " + NumToString(alignment) + ")\n";
-    code += Indent + "for i in range(data.size(), 0, -1):\n";
-    code += Indent + Indent + "var item = data[i - 1]\n";
-    code += Indent + Indent + "p_builder.write_" + write_method + "(item)\n";
-    code += Indent + "return p_builder.finish_vector()\n\n";
+    code += _indent + "for i in range(data.size(), 0, -1):\n";
+    code += _indent + _indent + "var item = data[i - 1]\n";
+    code += _indent + _indent + "p_builder.write_" + write_method + "(item)\n";
+    code += _indent + "return p_builder.finish_vector()\n\n";
   }
 
   // Set the value of one of the members of a table's vector and fills in the
@@ -814,7 +820,7 @@ class GdscriptGenerator : public BaseGenerator {
   // Generate a struct field, conditioned on its child type(s).
   void GenStructAccessor(const StructDef& struct_def, const FieldDef& field,
                          std::string* code_ptr) const {
-    GenComment(field.doc_comment, code_ptr, &def_comment, Indent.c_str());
+    GenComment(field.doc_comment, code_ptr, &def_comment, _indent.c_str());
     if (IsScalar(field.value.type.base_type)) {
       if (struct_def.fixed) {
         GetScalarFieldOfStruct(struct_def, field, code_ptr);
@@ -872,7 +878,7 @@ class GdscriptGenerator : public BaseGenerator {
     auto& code = *code_ptr;
     code += "static func size_of():\n";
     code +=
-        Indent + "return " + NumToString(struct_def.bytesize) + "\n";
+        _indent + "return " + NumToString(struct_def.bytesize) + "\n";
     code += "\n";
   }
 
@@ -940,13 +946,6 @@ class GdscriptGenerator : public BaseGenerator {
     }
   }
 
-  void GenReceiverForObjectAPI(const StructDef& struct_def,
-                               std::string* code_ptr) const {
-    auto& code = *code_ptr;
-    code += GenIndents(1) + "# " + namer_.ObjectType(struct_def);
-    code += GenIndents(1) + "func ";
-  }
-
   void BeginClassForObjectAPI(const StructDef& struct_def,
                               std::string* code_ptr) const {
     auto& code = *code_ptr;
@@ -980,17 +979,18 @@ class GdscriptGenerator : public BaseGenerator {
       return float_const_gen_.GenFloatConstant(field);
     } else if (IsInteger(base_type)) {
       return field.value.constant;
+    } else if (IsString(field.value.type)) {
+      return "\"\"";
+    } else if (IsArray(field.value.type) || IsVector(field.value.type)) {
+      return "[]";
     } else {
       // For string, struct, and table.
       return "null";
     }
   }
 
-  void GenUnionInit(const FieldDef& field, std::string* field_types_ptr,
-                    std::set<std::string>* import_list,
-                    std::set<std::string>* import_typing_list) const {
+  void GenUnionInit(const FieldDef& field, std::string* field_types_ptr) const {
     // Gets all possible types in the union.
-    import_typing_list->insert("Union");
     auto& field_types = *field_types_ptr;
     field_types = "Union[";
 
@@ -1007,7 +1007,6 @@ class GdscriptGenerator : public BaseGenerator {
           if (parser_.opts.include_dependence_headers) {
             auto package_reference = GenPackageReference(ev.union_type);
             field_type = package_reference + "." + field_type;
-            import_list->insert("import " + package_reference);
           }
           field_type = "'" + field_type + "'";
           break;
@@ -1030,31 +1029,23 @@ class GdscriptGenerator : public BaseGenerator {
     // Gets the import lists for the union.
     if (parser_.opts.include_dependence_headers) {
       const auto package_reference = GenPackageReference(field.value.type);
-      import_list->insert("import " + package_reference);
     }
   }
 
-  void GenStructInit(const FieldDef& field, std::string* out_ptr,
-                     std::set<std::string>* import_list,
-                     std::set<std::string>* import_typing_list) const {
-    import_typing_list->insert("Optional");
+  void GenStructInit(const FieldDef& field, std::string* out_ptr) const {
     auto& output = *out_ptr;
     const Type& type = field.value.type;
     const std::string object_type = namer_.ObjectType(*type.struct_def);
     if (parser_.opts.include_dependence_headers) {
       auto package_reference = GenPackageReference(type);
       output = package_reference + "." + object_type + "]";
-      import_list->insert("import " + package_reference);
     } else {
       output = object_type + "]";
     }
     output = "Optional[" + output;
   }
 
-  void GenVectorInit(const FieldDef& field, std::string* field_type_ptr,
-                     std::set<std::string>* import_list,
-                     std::set<std::string>* import_typing_list) const {
-    import_typing_list->insert("List");
+  void GenVectorInit(const FieldDef& field, std::string* field_type_ptr) const {
     auto& field_type = *field_type_ptr;
     const Type& vector_type = field.value.type.VectorType();
     const BaseType base_type = vector_type.base_type;
@@ -1065,7 +1056,6 @@ class GdscriptGenerator : public BaseGenerator {
       if (parser_.opts.include_dependence_headers) {
         auto package_reference = GenPackageReference(vector_type);
         field_type = package_reference + "." + object_type + "]";
-        import_list->insert("import " + package_reference);
       }
       field_type = "Optional[List[" + field_type + "]";
     } else {
@@ -1074,13 +1064,10 @@ class GdscriptGenerator : public BaseGenerator {
     }
   }
 
-  void GenInitialize(const StructDef& struct_def, std::string* code_ptr,
-                     std::set<std::string>* import_list) const {
-    std::string signature_params;
+  void GenInitialize(const StructDef& struct_def, std::string* code_ptr) const {
     std::string init_body;
-    std::set<std::string> import_typing_list;
 
-    signature_params += GenIndents(2) + "self,";
+    std::string signature_params;
 
     for (auto it = struct_def.fields.vec.begin();
          it != struct_def.fields.vec.end(); ++it) {
@@ -1088,139 +1075,33 @@ class GdscriptGenerator : public BaseGenerator {
       if (field.deprecated) continue;
 
       // Determines field type, default value, and typing imports.
-      auto base_type = field.value.type.base_type;
-      std::string field_type;
-      switch (base_type) {
-        case BASE_TYPE_UNION: {
-          GenUnionInit(field, &field_type, import_list, &import_typing_list);
-          break;
-        }
-        case BASE_TYPE_STRUCT: {
-          GenStructInit(field, &field_type, import_list, &import_typing_list);
-          break;
-        }
-        case BASE_TYPE_VECTOR:
-        case BASE_TYPE_ARRAY: {
-          GenVectorInit(field, &field_type, import_list, &import_typing_list);
-          break;
-        }
-        default:
-          // Scalar or sting fields.
-          field_type = GetBaseGDTypeForScalarAndString(base_type);
-          if (field.IsScalarOptional()) {
-            import_typing_list.insert("Optional");
-            field_type = "Optional[" + field_type + "]";
-          }
-          break;
-      }
+      const auto field_type = GdObjectApiTypeName(field);
 
       const auto default_value = GetDefaultValue(field);
       // Writes the init statement.
       const auto field_field = namer_.Field(field);
 
       // Build signature with keyword arguments, type hints, and default values.
-      signature_params +=
-          GenIndents(2) + field_field + " = " + default_value + ",";
+      if (!signature_params.empty()) {
+        signature_params += ", ";
+      }
+      signature_params += "p_" + field_field + ": " + field_type;
+      signature_params += " = " + default_value;
 
       // Build the body of the __init__ method.
-      init_body += GenIndents(2) + "self." + field_field + " = " + field_field +
-                   "  # type: " + field_type;
+      init_body += _indent + _indent + "self." + field_field + " = p_" + field_field + "\n";
     }
 
     // Writes __init__ method.
     auto& code_base = *code_ptr;
-    GenReceiverForObjectAPI(struct_def, code_ptr);
-    code_base += "__init__(" + signature_params + GenIndents(1) + "):";
+    code_base += _indent + "func _init(" + signature_params + "):\n";
     if (init_body.empty()) {
-      code_base += GenIndents(2) + "pass";
+      code_base += _indent + _indent + "pass";
     } else {
       code_base += init_body;
     }
     code_base += "\n";
-
-    // Merges the typing imports into import_list.
-    if (!import_typing_list.empty()) {
-      // Adds the try statement.
-      std::string typing_imports = "try:";
-      typing_imports += GenIndents(1) + "from typing import ";
-      std::string separator_string = ", ";
-      for (auto it = import_typing_list.begin(); it != import_typing_list.end();
-           ++it) {
-        const std::string& im = *it;
-        typing_imports += im + separator_string;
-      }
-      // Removes the last separator_string.
-      typing_imports.erase(typing_imports.length() - separator_string.size());
-
-      // Adds the except statement.
-      typing_imports += "\n";
-      typing_imports += "except:";
-      typing_imports += GenIndents(1) + "pass";
-      import_list->insert(typing_imports);
-    }
-
-    // Removes the import of the struct itself, if applied.
-    auto struct_import = "import " + namer_.NamespacedType(struct_def);
-    import_list->erase(struct_import);
   }
-
-  void InitializeFromBuf(const StructDef& struct_def,
-                         std::string* code_ptr) const {
-    auto& code = *code_ptr;
-    const auto struct_var = namer_.Variable(struct_def);
-    const auto struct_type = namer_.Type(struct_def);
-
-    code += GenIndents(1) + "static func init_from_buffer(buf, pos):";
-    code += GenIndents(2) + struct_var + " = " + struct_type + "()";
-    code += GenIndents(2) + struct_var + "._init(buf, pos)";
-    code += GenIndents(2) + "return init_from_obj(" + struct_var + ")";
-    code += "\n";
-  }
-
-  void InitializeFromPackedBuf(const StructDef& struct_def,
-                               std::string* code_ptr) const {
-    auto& code = *code_ptr;
-    const auto struct_var = namer_.Variable(struct_def);
-    const auto struct_type = namer_.Type(struct_def);
-
-    code += GenIndents(1) + "static func init_from_packed(buf, pos=0):";
-    code += GenIndents(2) +
-            "n = flatbuffers.encode.Get(flatbuffers.packer.uoffset, buf, pos)";
-    code += GenIndents(2) + "return init_from_buffer(buf, pos+n)";
-    code += "\n";
-  }
-
-  void InitializeFromObjForObject(const StructDef& struct_def,
-                                  std::string* code_ptr) const {
-    auto& code = *code_ptr;
-    const auto struct_var = namer_.Variable(struct_def);
-    const auto struct_object = namer_.ObjectType(struct_def);
-
-    code += GenIndents(1) + "static func init_from_obj(cls, " + struct_var + "):";
-    code += GenIndents(2) + "x = " + struct_object + "()";
-    code += GenIndents(2) + "x._UnPack(" + struct_var + ")";
-    code += GenIndents(2) + "return x";
-    code += "\n";
-  }
-
-  // TODO: reintroduce
-  // void GenCompareOperator(const StructDef& struct_def,
-  //                         std::string* code_ptr) const {
-  //   auto& code = *code_ptr;
-  //   code += GenIndents(1) + "def __eq__(self, other):";
-  //   code += GenIndents(2) + "return type(self) == type(other)";
-  //   for (auto it = struct_def.fields.vec.begin();
-  //        it != struct_def.fields.vec.end(); ++it) {
-  //     auto& field = **it;
-  //     if (field.deprecated) continue;
-
-  //     // Writes the comparison statement for this field.
-  //     const auto field_name = namer_.Field(field);
-  //     code += " and \\" + GenIndents(3) + "self." + field_name +
-  //             " == " + "other." + field_name;
-  //   }
-  //   code += "\n";
-  // }
 
   void GenUnPackForStruct(const StructDef& struct_def, const FieldDef& field,
                           std::string* code_ptr) const {
@@ -1440,7 +1321,6 @@ class GdscriptGenerator : public BaseGenerator {
     auto& code_base = *code_ptr;
     const auto struct_var = namer_.Variable(struct_def);
 
-    GenReceiverForObjectAPI(struct_def, code_ptr);
     code_base += "_UnPack(self, " + struct_var + "):";
     code_base += GenIndents(2) + "if " + struct_var + " is None:";
     code_base += GenIndents(3) + "return";
@@ -1456,20 +1336,55 @@ class GdscriptGenerator : public BaseGenerator {
     code_base += "\n";
   }
 
+  bool StructPackArgs(const StructDef& struct_def,
+                      const std::string nameprefix,
+                      // const std::string fieldname_suffix,
+                      std::string* code_ptr) const {
+    for (auto it = struct_def.fields.vec.begin();
+         it != struct_def.fields.vec.end(); ++it) {
+      auto& field = **it;
+      const auto& field_type = field.value.type;
+      const auto is_array = IsArray(field_type);
+      const auto& type = is_array ? field_type.VectorType() : field_type;
+      if (IsStruct(type)) {
+        // Generate arguments for a struct inside a struct. To ensure names
+        // don't clash, and to make it obvious these arguments are constructing
+        // a nested struct, prefix the name with the field name.
+        // auto subprefix = namer_.Field(field) + fieldname_suffix;
+
+        // StructPackArgs(*field.value.type.struct_def, subprefix,
+        //                fieldname_suffix, code_ptr);
+        return false;
+      } else {
+        auto& code = *code_ptr;
+        code += std::string(", ") + nameprefix;
+        code += namer_.Field(field);
+      }
+    }
+    return true;
+  }
+
   void GenPackForStruct(const StructDef& struct_def,
                         std::string* code_ptr) const {
     auto& code = *code_ptr;
+    const auto struct_type = namer_.Type(struct_def);
     const auto struct_fn = namer_.Function(struct_def);
 
-    GenReceiverForObjectAPI(struct_def, code_ptr);
-    code += "Pack(self, builder):";
-    code += GenIndents(2) + "return Create" + struct_fn + "(builder";
+    code += _indent + "func pack(p_builder: FB__Builder) -> int:\n";
 
-    StructBuilderArgs(struct_def,
-                      /* nameprefix = */ "selfGENPACK.",
-                      /* fieldname_suffix = */ ".", code_ptr);
-    code += ")\n";
+    std::string args_str;
+    if (!StructPackArgs(struct_def,/* nameprefix = */ "self.", &args_str)) {
+      // TODO: fix this...
+      code += _indent + _indent + "## TODO flatbuffers: properly support nested structs\n";
+      code += _indent + _indent + "return -1\n\n";
+      return;
+    }
+
+    code += _indent + _indent + "return " + struct_type +".create_" + struct_fn;
+    code += "(p_builder" + args_str + ")\n\n";
+
   }
+
 
   void GenPackForStructVectorField(const StructDef& struct_def,
                                    const FieldDef& field,
@@ -1482,37 +1397,38 @@ class GdscriptGenerator : public BaseGenerator {
     const auto field_method = namer_.Method(field);
 
     // Creates the field.
-    code_prefix += GenIndents(2) + "if self." + field_field + " is not None:";
+    code_prefix += _indent + _indent + "if self." + field_field + " != null:\n";
     if (field.value.type.struct_def->fixed) {
-      code_prefix += GenIndents(3) + struct_type + "Start" + field_method +
-                     "Vector(builder, len(self." + field_field + "))";
-      code_prefix += GenIndents(3) + "for i in reversed(range(len(self." +
-                     field_field + "))):";
+      // struct vector so in place
+      code_prefix += _indent + _indent + _indent + struct_type + ".start_" + field_method +
+                     "_vector(p_builder, self." + field_field + ".size()))\n";
+      code_prefix += _indent + _indent + _indent + "for i in range(len(self." +
+                     field_field + " - 1, -1, -1))):\n";
       code_prefix +=
-          GenIndents(4) + "self." + field_field + "[i].Pack(builder)";
-      code_prefix += GenIndents(3) + field_field + " = builder.EndVector()";
+          _indent + _indent + _indent + _indent + "self." + field_field + "[i].pack(p_builder)\n";
+      code_prefix += _indent + _indent + _indent + field_field + " = p_builder.finish_vector()\n";
     } else {
-      // If the vector is a struct vector, we need to first build accessor for
+      // If the vector is a table vector, we need to first build accessor for
       // each struct element.
-      code_prefix += GenIndents(3) + field_field + "list = []";
-      code_prefix += GenIndents(3);
-      code_prefix += "for i in range(len(self." + field_field + ")):";
-      code_prefix += GenIndents(4) + field_field + "list.append(self." +
-                     field_field + "[i].Pack(builder))";
+      code_prefix += _indent + _indent + field_field + "list = []\n";
+      code_prefix += _indent + _indent;
+      code_prefix += "for i in range(len(self." + field_field + ")):\n";
+      code_prefix += _indent + _indent + _indent + field_field + "list.append(self." +
+                     field_field + "[i].Pack(builder))\n";
 
-      code_prefix += GenIndents(3) + struct_type + "Start" + field_method +
-                     "Vector(builder, len(self." + field_field + "))";
-      code_prefix += GenIndents(3) + "for i in reversed(range(len(self." +
-                     field_field + "))):";
-      code_prefix += GenIndents(4) + "builder.PrependUOffsetTRelative" + "(" +
-                     field_field + "list[i])";
-      code_prefix += GenIndents(3) + field_field + " = builder.EndVector()";
+      code_prefix += _indent + _indent + struct_type + "Start" + field_method +
+                     "Vector(builder, len(self." + field_field + "))\n";
+      code_prefix += _indent + _indent + "for i in reversed(range(len(self." +
+                     field_field + "))):\n";
+      code_prefix += _indent + _indent + _indent + "builder.PrependUOffsetTRelative" + "(" +
+                     field_field + "list[i])\n";
+      code_prefix += _indent + _indent + _indent + field_field + " = builder.EndVector()\n";
     }
 
     // Adds the field into the struct.
-    code += GenIndents(2) + "if self." + field_field + " is not None:";
-    code += GenIndents(3) + struct_type + "Add" + field_method + "(builder, " +
-            field_field + ")";
+    code += _indent + "if self." + field_field + " is not None:\n";
+    code += _indent + _indent + struct_type + "Add" + field_method + "(builder, " +
+            field_field + ")\n";
   }
 
   void GenPackForScalarVectorFieldHelper(const StructDef& struct_def,
@@ -1587,12 +1503,13 @@ class GdscriptGenerator : public BaseGenerator {
     const auto struct_type = namer_.Type(struct_def);
 
     // Adds the field into the struct.
-    code += GenIndents(2) + "if self." + field_field + " is not None:";
-    code += GenIndents(3) + struct_type + "Add" + field_method + "(builder, " +
+    code += Indent(2) + "var " + field_field + "_offset TODOTHIS IS WHERE I GOT TO = 0";
+    code += Indent(2) + "if self." + field_field + " != null:\n";
+    code += Indent(3) + struct_type + "Add" + field_method + "(builder, " +
             field_field + ")";
 
     // Creates the field.
-    code_prefix += GenIndents(2) + "if self." + field_field + " is not None:";
+    code_prefix += Indent(2) + "if self." + field_field + " != 0:";
     // If the vector is a string vector, we need to first build accessor for
     // each string element. And this generated code, needs to be
     // placed ahead of code_prefix.
@@ -1627,19 +1544,21 @@ class GdscriptGenerator : public BaseGenerator {
     if (field.value.type.struct_def->fixed) {
       // Pure struct fields need to be created along with their parent
       // structs.
-      code += GenIndents(2) + "if self." + field_field + " is not None:";
-      code += GenIndents(3) + field_field + " = self." + field_field +
-              ".Pack(builder)";
+      code_prefix += _indent + _indent + "var " + field_field + "_offset = 0\n";
+      code += _indent + _indent + "if self." + field_field + " != null:\n";
+      code += _indent + _indent + _indent;
+      code += field_field + "_offset = self." + field_field + ".pack(p_builder)\n";
     } else {
       // Tables need to be created before their parent structs are created.
-      code_prefix += GenIndents(2) + "if self." + field_field + " is not None:";
-      code_prefix += GenIndents(3) + field_field + " = self." + field_field +
-                     ".Pack(builder)";
-      code += GenIndents(2) + "if self." + field_field + " is not None:";
+      code_prefix += _indent + "if self." + field_field + " != null:\n";
+      code_prefix += _indent + _indent;
+      code += field_field + "_offset = self." + field_field +
+                     ".pack(p_builder)\n";
+      code += _indent + "if " + field_field + "_offset != null:\n";
     }
 
-    code += GenIndents(3) + struct_type + "Add" + field_method + "(builder, " +
-            field_field + ")";
+    code += _indent + _indent + struct_type + ".add_" + field_method + "(p_builder, " +
+            field_field + "_offset)\n";
   }
 
   void GenPackForUnionField(const StructDef& struct_def, const FieldDef& field,
@@ -1652,12 +1571,12 @@ class GdscriptGenerator : public BaseGenerator {
     const auto struct_type = namer_.Type(struct_def);
 
     // TODO(luwa): TypeT should be moved under the None check as well.
-    code_prefix += GenIndents(2) + "if self." + field_field + " is not None:";
-    code_prefix += GenIndents(3) + field_field + " = self." + field_field +
-                   ".Pack(builder)";
-    code += GenIndents(2) + "if self." + field_field + " is not None:";
-    code += GenIndents(3) + struct_type + "Add" + field_method + "(builder, " +
-            field_field + ")";
+    code_prefix += _indent +_indent + "if self." + field_field + " != null:\n";
+    code_prefix += _indent +_indent + _indent + field_field + " = self." + field_field +
+                   ".pack(p_builder)\n";
+    code += _indent +_indent + "if self." + field_field + " != null:\n";
+    code += _indent +_indent + _indent + struct_type + ".add_" + field_method + "(p_builder, " +
+            field_field + ")\n";
   }
 
   void GenPackForTable(const StructDef& struct_def,
@@ -1667,9 +1586,8 @@ class GdscriptGenerator : public BaseGenerator {
     const auto struct_var = namer_.Variable(struct_def);
     const auto struct_type = namer_.Type(struct_def);
 
-    GenReceiverForObjectAPI(struct_def, code_ptr);
-    code_base += "Pack(self, builder):";
-    code += GenIndents(2) + struct_type + "Start(builder)";
+    code_base += _indent + "func pack(p_builder: FB__Builder) -> int:\n";
+    code += _indent + _indent + struct_type + ".begin(p_builder)\n";
     for (auto it = struct_def.fields.vec.begin();
          it != struct_def.fields.vec.end(); ++it) {
       auto& field = **it;
@@ -1698,132 +1616,70 @@ class GdscriptGenerator : public BaseGenerator {
           break;
         }
         case BASE_TYPE_STRING: {
-          code_prefix +=
-              GenIndents(2) + "if self." + field_field + " is not None:";
-          code_prefix += GenIndents(3) + field_field +
-                         " = builder.CreateString(self." + field_field + ")";
-          code += GenIndents(2) + "if self." + field_field + " is not None:";
-          code += GenIndents(3) + struct_type + "Add" + field_method +
-                  "(builder, " + field_field + ")";
+          code_prefix += _indent + _indent + "var " + field_field + "_offset = \"\"\n";
+          code_prefix += _indent + _indent + "if self." + field_field + " != \"\":\n";
+          code_prefix += _indent + _indent + _indent;
+          code_prefix += field_field + "_offset = p_builder.write_string(self." + field_field + ")\n";
+          code += _indent + _indent  + "if " + field_field + "_offset != 0:\n";
+          code += _indent + _indent + _indent + struct_type + ".add_" + field_method +
+                  "(p_builder, " + field_field + "_offset)\n";
           break;
         }
         default:
           // Generates code for scalar values. If the value equals to the
           // default value, builder will automatically ignore it. So we don't
           // need to check the value ahead.
-          code += GenIndents(2) + struct_type + "Add" + field_method +
-                  "(builder, self." + field_field + ")";
+          code += _indent + _indent  + struct_type + ".add_" + field_method +
+                  "(p_builder, self." + field_field + ")\n";
           break;
       }
     }
 
-    code += GenIndents(2) + struct_var + " = " + struct_type + "End(builder)";
-    code += GenIndents(2) + "return " + struct_var;
+    code += _indent + _indent  + "return " + struct_type + ".end(p_builder)\n";
 
     code_base += code_prefix + code;
     code_base += "\n";
   }
 
-  void GenStructForObjectAPI(const StructDef& struct_def,
+  void GenObjectAPI(const StructDef& struct_def,
                              std::string* code_ptr) const {
     if (struct_def.generated) return;
 
-    std::set<std::string> import_list;
-    std::string code;
+    auto& code = *code_ptr;
 
-    // Creates an object class for a struct or a table
-    BeginClassForObjectAPI(struct_def, &code);
+    code += "\n\nclass ObjectType extends FB__Object:\n";
 
-    GenInitialize(struct_def, &code, &import_list);
+    for (auto it = struct_def.fields.vec.begin();
+         it != struct_def.fields.vec.end(); ++it) {
+      auto& field = **it;
 
-    InitializeFromBuf(struct_def, &code);
+      const auto field_type = GdObjectApiTypeName(field);
 
-    InitializeFromPackedBuf(struct_def, &code);
+      const auto default_value = GetDefaultValue(field);
 
-    InitializeFromObjForObject(struct_def, &code);
+      code += _indent + "var " + namer_.Field(field) + ": ";
+      code += field_type + " = " + default_value + "\n";
+    }
 
-    // TODO: reintroduce
-    // if (parser_.opts.gen_compare) {
-    //   GenCompareOperator(struct_def, &code);
-    // }
+    code += "\n";
 
-    GenUnPack(struct_def, &code);
+    // code += _indent + "func pack(p_builder: FB__Builder):\n";
+    // code += _indent + _indent + "pass";
+
+    GenInitialize(struct_def, &code);
+
+    // // TODO: reintroduce
+    // // if (parser_.opts.gen_compare) {
+    // //   GenCompareOperator(struct_def, &code);
+    // // }
+
+    // GenUnPack(struct_def, &code);
 
     if (struct_def.fixed) {
       GenPackForStruct(struct_def, &code);
     } else {
       GenPackForTable(struct_def, &code);
     }
-
-    // Adds the imports at top.
-    auto& code_base = *code_ptr;
-    code_base += "\n";
-    for (auto it = import_list.begin(); it != import_list.end(); it++) {
-      auto im = *it;
-      code_base += im + "\n";
-    }
-    code_base += code;
-  }
-
-  // TODO: finish obj api
-  void GenUnionCreatorForStruct(const EnumDef& enum_def, const EnumVal& ev,
-                                std::string* code_ptr) const {
-    auto& code = *code_ptr;
-    const auto union_type = namer_.Type(enum_def);
-    const auto variant = namer_.Variant(ev);
-    auto field_type = namer_.ObjectType(*ev.union_type.struct_def);
-
-    code +=
-        GenIndents(1) + "if unionType == " + union_type + "." + variant + ":";
-    if (parser_.opts.include_dependence_headers) {
-      auto package_reference = GenPackageReference(ev.union_type);
-      code += GenIndents(2) + "import " + package_reference;
-      field_type = package_reference + "." + field_type;
-    }
-    code += GenIndents(2) + "return " + field_type +
-            ".InitFromBuf(table.Bytes, table.Pos)";
-  }
-
-  void GenUnionCreatorForString(const EnumDef& enum_def, const EnumVal& ev,
-                                std::string* code_ptr) const {
-    auto& code = *code_ptr;
-    const auto union_type = namer_.Type(enum_def);
-    const auto variant = namer_.Variant(ev);
-
-    code +=
-        GenIndents(1) + "if unionType == " + union_type + "()." + variant + ":";
-    code += GenIndents(2) + "tab = Table(table.Bytes, table.Pos)";
-    code += GenIndents(2) + "union = tab.String(table.Pos)";
-    code += GenIndents(2) + "return union";
-  }
-
-  // Creates an union object based on union type.
-  void GenUnionCreator(const EnumDef& enum_def, std::string* code_ptr) const {
-    if (enum_def.generated) return;
-
-    auto& code = *code_ptr;
-    const auto enum_fn = namer_.Function(enum_def);
-
-    code += "\n";
-    code += "static func union_to_" + enum_fn;
-    code += "(unionType: " + namer_.Type(enum_def) + ", parent: FB__Table) -> FB__Table: # NB: nullable";
-
-    for (auto it = enum_def.Vals().begin(); it != enum_def.Vals().end(); ++it) {
-      auto& ev = **it;
-      // Union only supports string and table.
-      switch (ev.union_type.base_type) {
-        case BASE_TYPE_STRUCT:
-          GenUnionCreatorForStruct(enum_def, ev, &code);
-          break;
-        case BASE_TYPE_STRING:
-          GenUnionCreatorForString(enum_def, ev, &code);
-          break;
-        default:
-          break;
-      }
-    }
-    code += GenIndents(1) + "return null";
-    code += "\n";
   }
 
   // Generate enum declarations.
@@ -1855,36 +1711,13 @@ class GdscriptGenerator : public BaseGenerator {
     }
   }
 
-  std::string GenFieldTy(const FieldDef& field) const {
-    if (IsScalar(field.value.type.base_type) || IsArray(field.value.type)) {
-      const std::string ty = GenTypeBasic(field.value.type);
-      if (ty.find("int") != std::string::npos) {
-        return "int";
-      }
-
-      if (ty.find("float") != std::string::npos) {
-        return "float";
-      }
-
-      if (ty == "bool") {
-        return "bool";
-      }
-
-      return "Any";
-    } else {
-      if (IsStruct(field.value.type)) {
-        return "Any";
-      } else {
-        return "int";
-      }
-    }
-  }
-
   // Returns the method name for use with add/put calls.
   std::string GenMethod(const FieldDef& field) const {
     return (IsScalar(field.value.type.base_type) || IsArray(field.value.type))
-               ? namer_.Method(GenTypeBasic(field.value.type))
-               : (IsStruct(field.value.type) ? "Struct" : "UOffsetTRelative");
+      ? namer_.Method(GenTypeBasic(field.value.type))
+      : "u32";
+    // TODO: is this correct ^
+    // : (IsStruct(field.value.type) ? "Struct" : "UOffsetTRelative");
   }
 
   std::string GenTypeBasic(const Type& type) const {
@@ -1927,32 +1760,45 @@ class GdscriptGenerator : public BaseGenerator {
     return GenTypeGet(field.value.type);
   }
 
-  std::string GdTypeName(const FieldDef& field, bool force_array = false,
-                         bool force_raw_type = false) const {
-    std::string field_type = TypeName(field);
-    auto is_bool = IsBool(field.value.type.base_type);
+  std::string GdObjectApiTypeName(const FieldDef& field) const {
+    return IsArray(field.value.type) || IsVector(field.value.type)
+      ? GdArrayTypeName(field, true, true)
+      : GdTypeName(field, true, true);
+  }
 
-    if (!force_raw_type && IsArray(field.value.type)) {
-      return "Array[" + GdTypeName(field, false, true) + "]";
-    }
+  std::string GdArrayTypeName(const FieldDef& field,
+                              bool allow_struct = false,
+                              bool get_object = false) const {
+    return "Array[" + GdTypeName(field, allow_struct, get_object) + "]";
+  }
+
+  std::string GdTypeName(const FieldDef& field,
+                         bool allow_struct = false,
+                         bool get_object = false) const {
+    std::string field_name = TypeName(field);
+    auto field_type = field.value.type;
+    auto is_bool = IsBool(field_type.base_type);
 
     std::string out;
+    bool is_struct = field_type.base_type == BASE_TYPE_STRUCT ||
+      (field_type.base_type == BASE_TYPE_ARRAY &&
+       (field_type.VectorType().base_type == BASE_TYPE_STRUCT));
 
     if (is_bool) {
       out = "bool";
-    } else if (field_type == "float" || field_type == "double") {
+    } else if (field_name == "float" || field_name == "double") {
       out = "float";
-    } else if (IsEnum(field.value.type)) {
-      out = namer_.Type(*field.value.type.enum_def) + ".Enum";
+    } else if (IsEnum(field_type)) {
+      out = namer_.Type(*field_type.enum_def) + ".Enum";
+    } else if (allow_struct && is_struct) {
+      return get_object ? field_name + ".ObjectType" : field_name;
+    } else if (IsString(field_type)) {
+      return "String";
     } else {
       out = "int";
     }
 
-    if (force_array) {
-      return "Array[" + out + "]";
-    } else {
-      return out;
-    }
+    return out;
   }
 
   // Create a struct with a builder and the struct's arguments.
@@ -1983,9 +1829,6 @@ class GdscriptGenerator : public BaseGenerator {
       auto& enum_def = **it;
       std::string enumcode;
       GenEnum(enum_def, &enumcode);
-      if (parser_.opts.generate_object_based_api & enum_def.is_union) {
-        GenUnionCreator(enum_def, &enumcode);
-      }
 
       const std::string mod =
           namer_.File(enum_def, SkipFile::SuffixAndExtension);
@@ -2005,7 +1848,7 @@ class GdscriptGenerator : public BaseGenerator {
       std::string declcode;
       GenStruct(struct_def, &declcode);
       if (parser_.opts.generate_object_based_api) {
-        GenStructForObjectAPI(struct_def, &declcode);
+        GenObjectAPI(struct_def, &declcode);
       }
 
       const std::string mod =

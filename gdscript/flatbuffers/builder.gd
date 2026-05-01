@@ -160,7 +160,7 @@ func write_aligned_offset(p_offset: int) -> void:
   # TODO: understand how this works...
   self.write_u32(self.offset() - p_offset + 4)
 
-func start_table() -> bool:
+func begin_table() -> bool:
   if self.curr_vtable != null:
     error_state = ErrorState.WRITE_STATE_IMPROPER_USE
     printerr("can't build nested tables")
@@ -170,7 +170,7 @@ func start_table() -> bool:
 
   return self.error_state != ErrorState.OK
 
-func finish_table() -> int:
+func end_table() -> int:
   if self.curr_vtable == null:
     error_state = ErrorState.WRITE_STATE_IMPROPER_USE
     printerr("not building a table, can't finish")
@@ -270,6 +270,16 @@ func finish(p_root_table: int, p_opt_file_id: String = "", p_opt_size_prefix: bo
   else:
     printerr("builder error %s" % self.error_state)
     return false
+
+func write_string(p_str: String) -> int:
+  var byte_array = p_str.to_utf8_buffer()
+  self.write_aligned_u8(0)
+  self.start_vector(1, byte_array.size(), 1)
+
+  # TODO: this is mega slow - see the best way to copy chunks
+  for i in range(byte_array.size(), 0, -1):
+    self.write_u16(byte_array[i - 1])
+  return self.finish_vector()
 
 ## inner classes
 # TODO: tbh this should probably live in the FB__Table class...
