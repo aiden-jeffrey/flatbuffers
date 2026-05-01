@@ -97,6 +97,18 @@ static const Namer::Config kConfig = {
 static const CommentConfig def_comment = {nullptr, "#", nullptr};
 static const std::string Indent = "  ";
 
+// NB: copying this limitation from the ts bindings - presumably can't create a table
+//     that contains structs because they need to be added inline...
+static bool CanCreateFactoryMethod(const StructDef &struct_def) {
+  return struct_def.fields.vec.size() < 2 ||
+    std::all_of(std::begin(struct_def.fields.vec),
+                std::end(struct_def.fields.vec),
+                [](const FieldDef *f) -> bool {
+                  FLATBUFFERS_ASSERT(f != nullptr);
+                  return f->value.type.base_type != BASE_TYPE_STRUCT;
+                });
+}
+
 }  // namespace
 
 class GdscriptGenerator : public BaseGenerator {
@@ -497,8 +509,6 @@ class GdscriptGenerator : public BaseGenerator {
     code += "(p_builder: FB__Builder";
   }
 
-  // Recursively generate arguments for a constructor, to deal with nested
-  // structs.
   void StructBuilderArgs(const StructDef& struct_def,
                          const std::string nameprefix,
                          const std::string fieldname_suffix,
@@ -527,44 +537,47 @@ class GdscriptGenerator : public BaseGenerator {
     }
   }
 
+  std::string TableBuilderFieldName(const FieldDef& field, const std::string nameprefix) const {
+    std::string out = nameprefix + namer_.Field(field);
+
+    if (!IsScalar(field.value.type.base_type)) {
+      out += "_offset";
+    }
+    return out;
+  }
+
   void TableBuilderArgs(const StructDef& struct_def,
                         const std::string nameprefix,
-                        const std::string fieldname_suffix,
                         std::string* code_ptr, bool parent_struct_array = false) const {
     for (auto it = struct_def.fields.vec.begin();
          it != struct_def.fields.vec.end(); ++it) {
       auto& field = **it;
-      const auto& field_type = field.value.type;
-      const auto is_array = IsArray(field_type);
-      const auto& type = is_array ? field_type.VectorType() : field_type;
-      if (IsStruct(type)) {
-        // Generate arguments for a struct inside a struct. To ensure names
-        // don't clash, and to make it obvious these arguments are constructing
-        // a nested struct, prefix the name with the field name.
-        auto subprefix = nameprefix;
-        subprefix += namer_.Field(field) + fieldname_suffix;
-        TableBuilderArgs(*field.value.type.struct_def, subprefix,
-                          fieldname_suffix, code_ptr, is_array);
-      } else {
-        auto& code = *code_ptr;
-        code += std::string(", ") + nameprefix;
-        code += namer_.Field(field);
-
-        if (!IsScalar(field.value.type.base_type)) {
-          code += "_offset";
-        }
-        code += ": " + GdTypeName(field, parent_struct_array);
-      }
+      auto& code = *code_ptr;
+      code += std::string(", ") + TableBuilderFieldName(field, nameprefix);
+      code += ": " + GdTypeName(field, parent_struct_array);
     }
   }
 
   void TableBuilderBody(const StructDef& struct_def, const char* nameprefix,
                         std::string* code_ptr) const {
     auto& code = *code_ptr;
-    (void)struct_def;
-    (void)nameprefix;
+    const std::string struct_name = namer_.Type(struct_def);
 
-    code += Indent + "## TODO flatbuffers: Implement table creator helpers\n";
+    code += Indent + struct_name + ".begin(p_builder)\n";
+    for (auto it = struct_def.fields.vec.begin();
+         it != struct_def.fields.vec.end(); ++it) {
+      auto& field = **it;
+      auto arg_name = TableBuilderFieldName(field, nameprefix);
+      const auto field_name = namer_.Method(field);
+      // TODO: add deprecated checks across the board
+
+      if (field.IsScalarOptional()) {
+        code += Indent + "if " + arg_name + " != null:\n" + Indent;
+      }
+      code += Indent + struct_name + ".add_" + field_name + "(";
+      code += "p_builder, " + arg_name + ")\n";
+      code += Indent + "return " + struct_name + ".end(p_builder)\n";
+    }
   }
 
   // End the creator function signature.
@@ -637,8 +650,8 @@ class GdscriptGenerator : public BaseGenerator {
 
     code += "\n## Builder static functions\n\n";
 
-    code += "static func start(builder: FB__Builder) -> void:\n";
-    code += Indent + "builder.start_table()\n\n";
+    code += "static func begin(p_builder: FB__Builder) -> void:\n";
+    code += Indent + "p_builder.start_table()\n\n";
   }
 
   void GenBufferFinish(const StructDef& struct_def,
@@ -673,7 +686,7 @@ class GdscriptGenerator : public BaseGenerator {
     const auto struct_type = namer_.Type(struct_def);
     // Generate method with struct name.
 
-    code += "static func finish(builder: FB__Builder) -> void:\n";
+    code += "static func end(builder: FB__Builder) -> void:\n";
     code += Indent + "builder.finish_table()\n\n";
   }
 
@@ -886,12 +899,12 @@ class GdscriptGenerator : public BaseGenerator {
     GenBufferFinish(struct_def, code_ptr, true);
     GenBufferFinish(struct_def, code_ptr, false);
 
-    BeginBuilderArgs(struct_def, code_ptr);
-    TableBuilderArgs(struct_def, "p_", "_", code_ptr);
-    EndBuilderArgs(code_ptr);
-    TableBuilderBody(struct_def, "p_", code_ptr);
-
-    EndBuilderBody(code_ptr);
+    if (CanCreateFactoryMethod(struct_def)) {
+      BeginBuilderArgs(struct_def, code_ptr);
+      TableBuilderArgs(struct_def, "p_", code_ptr);
+      EndBuilderArgs(code_ptr);
+      TableBuilderBody(struct_def, "p_", code_ptr);
+    }
   }
 
   // Generates struct or table methods.
@@ -1929,7 +1942,7 @@ class GdscriptGenerator : public BaseGenerator {
       out = "bool";
     } else if (field_type == "float" || field_type == "double") {
       out = "float";
-    } else if (field.value.type.enum_def) {
+    } else if (IsEnum(field.value.type)) {
       out = namer_.Type(*field.value.type.enum_def) + ".Enum";
     } else {
       out = "int";
