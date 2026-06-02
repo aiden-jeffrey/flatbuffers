@@ -1,0 +1,62 @@
+namespace Kitchen;
+
+enum Thing : byte { Sink = -1, Oven = 42 }
+
+struct Vec {
+    x : uint8;
+    y : uint8;
+    z : uint8;
+}
+
+table VecTable {
+    x : uint8;
+    y : uint8;
+    z : uint8;
+}
+
+
+struct Quat {
+    v : Vec;
+    w : uint8;
+}
+
+struct Data {
+    v      : Vec;
+    q      : Quat;
+    uid    : uint16;
+    height : [uint32: 3];
+    v_arr  : [Vec: 2];
+}
+
+table TableA {
+    a : bool;
+    b : int32;
+}
+
+table TableB {
+    g       : int32;
+    h       : float;
+    dbl     : double;
+    vec_arr : [Vec];
+}
+
+union TestUnion {
+    TableA,
+    TableB,
+}
+
+table FooBar {
+    thing    : Thing = Sink;
+    density  : long (deprecated);
+    say      : string;
+    arr      : [uint32];
+    str_arr  : [string];
+    vec_arr  : [Vec];
+    just_vec : Vec;
+    a_arr    : [TableA];
+    data     : Data;
+    boonion  : TestUnion;
+    a        : TableA;
+}
+file_identifier "KTCN";
+root_type FooBar;

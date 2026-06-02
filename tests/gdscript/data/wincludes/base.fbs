@@ -1,0 +1,13 @@
+include "util/index.fbs";
+include "sub/index.fbs";
+
+namespace Wincludes;
+
+table WincludeRoot {
+  inventory : Inventory;
+  msg_uid   : string;
+  lang      : Language;
+}
+
+file_identifier "WINC";
+root_type WincludeRoot;

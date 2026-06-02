@@ -1,0 +1,27 @@
+namespace Simple;
+
+struct Vec {
+    x : uint8;
+    y : uint8;
+    z : uint8;
+}
+
+enum MyFirstEnum : byte { One = 1, Two = 2, Hundy = 100 }
+
+table SubTable {
+    num  : uint32;
+    vec  : Vec;
+    nint : int32;
+    arr  : [uint32];
+    e    : MyFirstEnum = One;
+    str_ : string;
+    bint : int32;
+}
+
+table MyRoot {
+    uid  : string;
+    data : SubTable;
+}
+
+file_identifier "SMPL";
+root_type MyRoot;

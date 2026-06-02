@@ -1,0 +1,4 @@
+generated/*
+.godot/
+out/
+**/**.gd.uid

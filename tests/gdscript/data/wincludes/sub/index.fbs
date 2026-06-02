@@ -1,0 +1,15 @@
+include "../util/index.fbs";
+
+namespace Wincludes;
+
+struct Item {
+  qty   : uint32;
+  sold  : bool;
+  price : double;
+  alpha : Alpha;
+}
+
+table Inventory {
+  title : string;
+  items : [Item];
+}
