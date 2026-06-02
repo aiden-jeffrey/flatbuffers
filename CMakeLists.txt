@@ -164,6 +164,7 @@ set(FlatBuffers_Compiler_SRCS
   src/idl_gen_dart.cpp
   src/idl_gen_kotlin.cpp
   src/idl_gen_kotlin_kmp.cpp
+  src/idl_gen_gdscript.cpp
   src/idl_gen_go.cpp
   src/idl_gen_java.cpp
   src/idl_gen_ts.cpp
@@ -498,7 +499,7 @@ if(FLATBUFFERS_BUILD_SHAREDLIB)
   endif()
 endif()
 
-function(compile_schema SRC_FBS OPT SUFFIX OUT_GEN_FILE) 
+function(compile_schema SRC_FBS OPT SUFFIX OUT_GEN_FILE)
   get_filename_component(SRC_FBS_DIR ${SRC_FBS} PATH)
   string(REGEX REPLACE "\\.fbs$" "${SUFFIX}.h" GEN_HEADER ${SRC_FBS})
   add_custom_command(
@@ -532,14 +533,14 @@ endfunction()
 if(FLATBUFFERS_BUILD_TESTS)
   add_executable(flattests ${FlatBuffers_Tests_SRCS})
   target_link_libraries(flattests PRIVATE $<BUILD_INTERFACE:ProjectConfig>)
-  target_include_directories(flattests PUBLIC 
+  target_include_directories(flattests PUBLIC
     # Ideally everything is fully qualified from the root directories
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
     # TODO(derekbailey): update includes to fully qualify src/ and tests/
-    src 
-    tests 
-    ${CMAKE_CURRENT_BINARY_DIR}/tests 
+    src
+    tests
+    ${CMAKE_CURRENT_BINARY_DIR}/tests
   )
 
   # Have tests load data from the source directory, not the build directory.
@@ -564,14 +565,14 @@ if(FLATBUFFERS_BUILD_TESTS)
   if(FLATBUFFERS_CODE_SANITIZE)
     add_fsanitize_to_target(flattests ${FLATBUFFERS_CODE_SANITIZE})
   endif()
-  
+
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/samples)
 
   add_executable(flatsamplebinary ${FlatBuffers_Sample_Binary_SRCS})
   add_executable(flatsampletext ${FlatBuffers_Sample_Text_SRCS})
   add_executable(flatsamplebfbs ${FlatBuffers_Sample_BFBS_SRCS})
 
-  # Add a library so there is a single target that the generated samples can 
+  # Add a library so there is a single target that the generated samples can
   # link too.
   if(MSVC OR ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
     add_library(flatsample INTERFACE)
