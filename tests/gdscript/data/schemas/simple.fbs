@@ -9,7 +9,7 @@ struct Vec {
 enum MyFirstEnum : byte { One = 1, Two = 2, Hundy = 100 }
 
 table SubTable {
-    num  : uint32;
+    num  : float;
     vec  : Vec;
     nint : int32;
     arr  : [uint32];
