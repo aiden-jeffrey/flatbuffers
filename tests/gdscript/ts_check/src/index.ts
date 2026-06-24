@@ -9,7 +9,7 @@ async function writeFileBinary(
   data: Uint8Array
 ): Promise<boolean> {
   try {
-    const fullPath = `./out/${filepath}`;
+    const fullPath = `../data/bin/${filepath}`;
     const dirName = path.dirname(fullPath);
 
     await fs.mkdir(dirName, { recursive: true });

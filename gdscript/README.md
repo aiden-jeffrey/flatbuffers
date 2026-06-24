@@ -1,4 +1,4 @@
-# Godot Script (gdscript) flatbuffer bindings (WIP)
+# Godot Script (gdscript) flatbuffer bindings
 
 The files in the `flatbuffer` directory here are a set of base classes and util
 types for use in the construction and access of flatbuffer binaries in gdscript.
@@ -22,7 +22,3 @@ project in a way that aligns normal dependency management, but I don't know what
 ## Usage
 
 Consult `../tests/gdscript/tests.gd` for some idea of how to use the resulting bindings.
-
-## Note
-
-This is still WIP, the Object API is untested.
