@@ -754,7 +754,7 @@ class GdscriptGenerator : public BaseGenerator {
         code += std::string(", ") + nameprefix;
         code += namer_.Field(field);
         code += ": " + (parent_struct_array || is_array
-          ? GdArrayTypeName(field)
+          ? "Array"
           : GdTypeName(field));
       }
     }
@@ -1239,13 +1239,13 @@ class GdscriptGenerator : public BaseGenerator {
       const auto& type = is_array ? field_type.VectorType() : field_type;
       if (IsStruct(type)) {
         // TODO: check how this works with arrays of structs that themselves contain arrays of
-        //       stucts
+        //       structs
         if (is_array) {
           // we have to map into arrays to extract the fields
           auto subprefix = nameprefix + "." + namer_.Field(field) + ".map(" +
             "func(elem): return elem"; // .something
 
-          StructPackArgs(*field.value.type.struct_def, subprefix, ")", code_ptr);
+          StructPackArgs(*field.value.type.struct_def, subprefix, ") as Array[int]", code_ptr);
         } else {
           // just extract the field directly
           auto subprefix = nameprefix + "." + namer_.Field(field);

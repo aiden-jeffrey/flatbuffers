@@ -288,10 +288,10 @@ func write_string(p_str: String) -> int:
     self.buffer.bytes.encode_u16(self.head + i, byte_array[i])
   return self.end_vector()
 
-func pack_object_array(p_obj_arr: Array[FB__Object]) -> Array[int]:
+func pack_object_array(p_obj_arr: Array) -> Array[int]:
   var ret: Array[int] = []
 
-  for i in range(p_obj_arr):
+  for i in range(p_obj_arr.size()):
     var val = p_obj_arr[i]
     if val != null:
       ret.append(val.pack(self))
@@ -303,7 +303,7 @@ func pack_object_array(p_obj_arr: Array[FB__Object]) -> Array[int]:
 func pack_string_array(p_obj_arr: Array[String]) -> Array[int]:
   var ret: Array[int] = []
 
-  for i in range(p_obj_arr):
+  for i in range(p_obj_arr.size()):
     var val = p_obj_arr[i]
     if val != null:
       ret.append(self.write_string(val))
