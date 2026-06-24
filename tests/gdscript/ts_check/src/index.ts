@@ -24,27 +24,13 @@ async function writeFileBinary(
 
 async function main() {
   program.name("gen binary")
-    // .option(
-    //   "-s, --source-dir <string>",
-    //   "Name of local source dir with GLB files",
-    //   "../../source-data/ballpark-videos",
-    // )
 
   program.parse(process.argv);
-  // const options = program.opts();
-  // console.log(options);
-
-  // await fs.mkdir(options.destDir, { recursive: true });
-
-  // const transformer = new Copier(
-  //   options.sourceDir, options.destDir, options.extension
-  // );
 
   const builder = new Builder(1024)
 
   const num = 100
   const arrOffset = SubTable.createArrVector(builder, [10, 9, 8, 7, 6])
-  // console.log("create str")
   const strOffset = builder.createString("aiden")
 
   SubTable.startSubTable(builder)
