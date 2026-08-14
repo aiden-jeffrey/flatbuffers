@@ -24,11 +24,11 @@ func _init(p_byte_buffer: FB__ByteBuffer, p_offset: int = 0, p_is_struct: bool =
   self.is_struct = p_is_struct
 
 func _make_string(p_offset: int) -> String:
-  var offset = self._get_indirect(p_offset)
-  var str_len = self.buffer.bytes.decode_u32(offset)
+  var offset: int = self._get_indirect(p_offset)
+  var str_len: int = self.buffer.bytes.decode_u32(offset)
   offset += 4
 
-  var slice = self.buffer.bytes.slice(offset, offset + str_len)
+  var slice: PackedByteArray = self.buffer.bytes.slice(offset, offset + str_len)
   return slice.get_string_from_utf8()
 
 func _vector_len(p_offset: int) -> int:
@@ -40,8 +40,8 @@ func _vector_start(p_offset: int) -> int:
 # Query the vtable for a given field voffset (start_offset + voffset is the address of the field)
 # - if the field index is outside the vtable, the field is missing
 func _get_voffset(p_vtable_offset: int) -> int:
-  var vtable = self.start_offset - self.buffer.bytes.decode_s32(self.start_offset)
-  var vtable_size = self.buffer.bytes.decode_u16(vtable)
+  var vtable: int = self.start_offset - self.buffer.bytes.decode_s32(self.start_offset)
+  var vtable_size: int = self.buffer.bytes.decode_u16(vtable)
   if p_vtable_offset < vtable_size:
     return self.buffer.bytes.decode_u16(vtable + p_vtable_offset)
   else:

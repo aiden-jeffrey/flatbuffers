@@ -95,19 +95,19 @@ func write_double(value: float) -> void:
 # TODO: is my error handling performant enough??
 func write_aligned_s8(value: int) -> void:
   if not self.prep(1, 0):
-    error_state = ErrorState.BUFFER_GROW_FAILURE
+    self.error_state = ErrorState.BUFFER_GROW_FAILURE
     return
   self.write_s8(value)
 
 func write_aligned_u8(value: int) -> void:
   if not self.prep(1, 0):
-    error_state = ErrorState.BUFFER_GROW_FAILURE
+    self.error_state = ErrorState.BUFFER_GROW_FAILURE
     return
   self.write_u8(value)
 
 func write_aligned_u16(value: int) -> void:
   if not self.prep(2, 0):
-    error_state = ErrorState.BUFFER_GROW_FAILURE
+    self.error_state = ErrorState.BUFFER_GROW_FAILURE
     return
   self.write_u16(value)
 
@@ -119,51 +119,51 @@ func write_aligned_s16(value: int) -> bool:
 
 func write_aligned_s32(value: int) -> void:
   if not self.prep(4, 0):
-    error_state = ErrorState.BUFFER_GROW_FAILURE
+    self.error_state = ErrorState.BUFFER_GROW_FAILURE
     return
   self.write_s32(value)
 
 func write_aligned_u32(value: int) -> void:
   if not self.prep(4, 0):
-    error_state = ErrorState.BUFFER_GROW_FAILURE
+    self.error_state = ErrorState.BUFFER_GROW_FAILURE
     return
   self.write_u32(value)
 
 func write_aligned_s64(value: int) -> void:
   if not self.prep(8, 0):
-    error_state = ErrorState.BUFFER_GROW_FAILURE
+    self.error_state = ErrorState.BUFFER_GROW_FAILURE
     return
   self.write_s64(value)
 
 func write_aligned_u64(value: int) -> void:
   if not self.prep(8, 0):
-    error_state = ErrorState.BUFFER_GROW_FAILURE
+    self.error_state = ErrorState.BUFFER_GROW_FAILURE
     return
   # TODO: resolve TODO against write_u64
   self.write_u64(value)
 
 func write_aligned_float(value: float) -> void:
   if not self.prep(4, 0):
-    error_state = ErrorState.BUFFER_GROW_FAILURE
+    self.error_state = ErrorState.BUFFER_GROW_FAILURE
     return
   self.write_float(value)
 
 func write_aligned_double(value: float) -> void:
   if not self.prep(8, 0):
-    error_state = ErrorState.BUFFER_GROW_FAILURE
+    self.error_state = ErrorState.BUFFER_GROW_FAILURE
     return
   self.write_double(value)
 
 func write_aligned_offset(p_offset: int) -> void:
   if not self.prep(4, 0):
-    error_state = ErrorState.BUFFER_GROW_FAILURE
+    self.error_state = ErrorState.BUFFER_GROW_FAILURE
     return
   # TODO: understand how this works...
   self.write_u32(self.offset() - p_offset + 4)
 
 func begin_table() -> bool:
   if self.curr_vtable != null:
-    error_state = ErrorState.WRITE_STATE_IMPROPER_USE
+    self.error_state = ErrorState.WRITE_STATE_IMPROPER_USE
     printerr("can't build nested tables")
     return false
 
@@ -173,22 +173,22 @@ func begin_table() -> bool:
 
 func end_table() -> int:
   if self.curr_vtable == null:
-    error_state = ErrorState.WRITE_STATE_IMPROPER_USE
+    self.error_state = ErrorState.WRITE_STATE_IMPROPER_USE
     printerr("not building a table, can't finish")
     return 0
 
   # TODO: why is this required? to ensure alinment??
   self.write_aligned_u32(0)
 
-  var start_offset = self.offset()
-  var table_len = (self.curr_vtable.end_offset - start_offset) * 2
-  var vtable_len = (self.curr_vtable.num_fields + 2) * 2
+  var start_offset: int = self.offset()
+  var table_len: int = (self.curr_vtable.end_offset - start_offset) * 2
+  var vtable_len: int = (self.curr_vtable.num_fields + 2) * 2
 
   # NB: we write buffers backwards in case you're confused
 
   # TODO could probably get away with writing non-aligned here...
   for i in range(self.curr_vtable.num_fields, 0, -1):
-    var voffset_abs = self.curr_vtable.slots[i - 1]
+    var voffset_abs: int = self.curr_vtable.slots[i - 1]
     if (voffset_abs != null && voffset_abs != 0):
       self.write_aligned_u16(start_offset - voffset_abs)
     else:
@@ -199,10 +199,10 @@ func end_table() -> int:
 
   # now we search for an identical vtable to reuse
   # we do this now because the table we just wrote has all the offsets applied
-  var our_vtable = self.head
+  var our_vtable: int = self.head
   var vtable_match: int = 0
   for vtable in self.vtable_offsets:
-    var other_vtable = self.buffer.capacity() - vtable
+    var other_vtable: int = self.buffer.capacity() - vtable
     if vtables_equal(our_vtable, other_vtable):
       print("found vtable match")
       vtable_match = vtable
@@ -225,7 +225,7 @@ func end_table() -> int:
 
 func begin_vector(elem_size: int, num_elems: int, alignment: int) -> bool:
   if self.curr_vtable != null:
-    error_state = ErrorState.WRITE_STATE_IMPROPER_USE
+    self.error_state = ErrorState.WRITE_STATE_IMPROPER_USE
     printerr("can't build vector while building table")
     return false
 
@@ -240,7 +240,7 @@ func begin_vector(elem_size: int, num_elems: int, alignment: int) -> bool:
 func end_vector() -> int:
   if self.curr_vector_size == -1:
     printerr("no table to finish")
-    error_state = ErrorState.WRITE_STATE_IMPROPER_USE
+    self.error_state = ErrorState.WRITE_STATE_IMPROPER_USE
     return false
 
   self.write_u32(self.curr_vector_size)
@@ -252,7 +252,7 @@ func finish(p_root_table: int, p_opt_file_id: String = "", p_opt_size_prefix: bo
     printerr("builder in error state %s, can't finish" % self.error_state)
     return false
 
-  var size_prefix = 4 if p_opt_size_prefix else 0
+  var size_prefix: int = 4 if p_opt_size_prefix else 0
   if (p_opt_file_id != ""):
     const req_len = FB__Constants.FILE_IDENTIFIER_LENGTH
     if p_opt_file_id.length() == req_len:
@@ -277,7 +277,7 @@ func finish(p_root_table: int, p_opt_file_id: String = "", p_opt_size_prefix: bo
     return false
 
 func write_string(p_str: String) -> int:
-  var byte_array = p_str.to_utf8_buffer()
+  var byte_array: PackedByteArray = p_str.to_utf8_buffer()
   self.write_aligned_u8(0)
   self.begin_vector(1, byte_array.size(), 1)
 
@@ -339,7 +339,7 @@ class CurrentTable:
     self.slots[p_field_index] = p_offset
 
 func vtables_equal(va: int, vb: int) -> bool:
-  var vtable_len = self.buffer.bytes.decode_u16(va)
+  var vtable_len: int = self.buffer.bytes.decode_u16(va)
   if vtable_len != self.buffer.bytes.decode_u16(vb):
     return false
 

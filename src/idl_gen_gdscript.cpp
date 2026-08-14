@@ -146,15 +146,15 @@ class GdscriptGenerator : public BaseGenerator {
     // ctors from buffer
     // TODO: support root struct here...
     code += "static func get_root_as(p_buffer: FB__ByteBuffer) -> " + struct_type + ":\n";
-    code += "  var pos = p_buffer.position\n";
-    code += "  var root_offset = pos + p_buffer.bytes.decode_u32(pos)\n";
+    code += "  var pos: int = p_buffer.position\n";
+    code += "  var root_offset: int = pos + p_buffer.bytes.decode_u32(pos)\n";
     code += "  return " + struct_type + ".new(p_buffer, root_offset)\n";
     code += "\n";
 
     code += "static func get_size_prefixed_root_as(p_buffer: FB__ByteBuffer) -> " + struct_type + ":\n";
     code += "  p_buffer.position += FB__Constants.FILE_IDENTIFIER_LENGTH\n";
-    code += "  var pos = p_buffer.position\n";
-    code += "  var root_offset = pos + p_buffer.bytes.decode_u32(pos)\n";
+    code += "  var pos: int = p_buffer.position\n";
+    code += "  var root_offset: int = pos + p_buffer.bytes.decode_u32(pos)\n";
     code += "  return " + struct_type + ".new(p_buffer, root_offset)\n";
     code += "\n";
 
@@ -191,7 +191,7 @@ class GdscriptGenerator : public BaseGenerator {
     code += "func " + namer_.Method(field) + "_length() -> int:\n";
     if (!IsArray(field.value.type)) {
       // vector
-      code += "  var voffset = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
+      code += "  var voffset: int = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
       code += "  if voffset != 0:\n";
       code += "    return self._vector_len(self.start_offset + voffset)\n";
       code += "  return 0\n";
@@ -204,7 +204,7 @@ class GdscriptGenerator : public BaseGenerator {
     // is_null()
     code += "func " + namer_.Method(field) + "_is_null() -> bool:\n";
     if (!IsArray(field.value.type)) {
-      code += "  var voffset = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
+      code += "  var voffset: int = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
       code += "  return voffset == 0\n";
     } else {
       // assume that we always have an array as memory is preassigned
@@ -244,7 +244,7 @@ class GdscriptGenerator : public BaseGenerator {
 
       auto& code = *code_ptr;
       code += "func " + namer_.Method(field) + "() -> " + type_name + ":\n";
-      code += "  var voffset = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
+      code += "  var voffset: int = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
       code += "  if voffset != 0:\n";
       code += "    return " + value + "\n";
       code += "  return " + default_value + "\n\n";
@@ -268,7 +268,7 @@ class GdscriptGenerator : public BaseGenerator {
       auto& code = *code_ptr;
       code += "func " + namer_.Method(field) + "() -> " + TypeName(field) + ":\n";
 
-      code += "  var voffset = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
+      code += "  var voffset: int = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
       code += "  if voffset != 0:\n";
       if (field.value.type.struct_def->fixed) {
         // struct so read directly
@@ -288,7 +288,7 @@ class GdscriptGenerator : public BaseGenerator {
     auto& code = *code_ptr;
     code += "func " +namer_.Method(field) + "() -> String:\n";
 
-    code += "  var voffset = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
+    code += "  var voffset: int = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
     code += "  if voffset != 0:\n";
     code += "    return " + GenGetter(field.value.type) + "(self.start_offset + voffset)\n";
     code += "  return \"\"\n\n";
@@ -300,9 +300,9 @@ class GdscriptGenerator : public BaseGenerator {
     auto vectortype = field.value.type.VectorType();
 
     code += "func " + namer_.Method(field) + "(p_index: int) -> " + TypeName(field) + ":\n";
-    code += "  var voffset = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
+    code += "  var voffset: int = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
     code += "  if voffset != 0:\n";
-    code += "    var elem = self._vector_start(self.start_offset + voffset)\n";
+    code += "    var elem: int = self._vector_start(self.start_offset + voffset)\n";
     code += "    elem += p_index * " + NumToString(InlineSize(vectortype)) + "\n";
     if (!vectortype.struct_def->fixed) {
       // table, so it's a pointer
@@ -322,9 +322,9 @@ class GdscriptGenerator : public BaseGenerator {
       ? "String" : GdTypeName(field);
 
     code += "func " + namer_.Method(field) + "(p_index: int)" + " -> " + type_name + ":\n";
-    code += "  var voffset = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
+    code += "  var voffset: int = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
     code += "  if voffset != 0:\n";
-    code += "    var elem = self._vector_start(self.start_offset + voffset)\n";
+    code += "    var elem: int = self._vector_start(self.start_offset + voffset)\n";
     code += "    elem += p_index * " + NumToString(InlineSize(vectortype)) + "\n";
     code += "    return " + GenGetter(field.value.type) + "(elem)\n";
     if (IsString(vectortype)) {
@@ -376,7 +376,7 @@ class GdscriptGenerator : public BaseGenerator {
     auto& code = *code_ptr;
 
     code += "func " + namer_.Method(field) + "() -> FB__Table:\n";
-    code += "  var voffset = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
+    code += "  var voffset: int = self._get_voffset(" + NumToString(field.value.offset) + ")\n";
     code += "  if voffset != 0:\n";
     code += "    var offset = self._get_indirect(self.start_offset + voffset)\n";
     code += "    return FB__Table.new(self.buffer, offset)\n";
@@ -1307,7 +1307,7 @@ class GdscriptGenerator : public BaseGenerator {
       code_prefix +=  "\n";
     } else {
       // scalar
-      code_prefix += "    var " + field_field + "_offset = " +
+      code_prefix += "    var " + field_field + "_offset: int = " +
         struct_type + ".create_" + field_method + "_vector(p_builder, " + "self." + field_field + ")\n";
     }
 
@@ -1331,7 +1331,7 @@ class GdscriptGenerator : public BaseGenerator {
       // Pure struct fields need to be created along with their parent
       // structs.
       code += "    if self." + field_field + " != null:\n";
-      code += "      var " + field_field + "_offset = self." + field_field + ".pack(p_builder)\n";
+      code += "      var " + field_field + "_offset: int = self." + field_field + ".pack(p_builder)\n";
     } else {
       code_decl += "    var " + field_field + "_offset: int = 0\n";
       // Tables need to be created before their parent structs are created.

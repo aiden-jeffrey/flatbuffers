@@ -177,7 +177,7 @@ static func test_simple_io():
   for i in range(read_fb.size()):
     GdTest.assert_equal("  [%s]" % i, read_fb[i], fb[i])
 
-  var bb = FB__ByteBuffer.new(fb)
+  var bb = FB__ByteBuffer.new(read_fb)
   var my_root = Simple_MyRoot.get_root_as(bb)
 
   var unpacked = Simple_MyRoot.ObjectType.unpack(my_root)

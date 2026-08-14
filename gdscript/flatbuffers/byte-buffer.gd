@@ -1,8 +1,5 @@
 class_name FB__ByteBuffer
 
-# TODO: add buffer identifier methods...
-# TODO: add support for buffers with size prefix...
-
 # TODO: do we need to do this??
 extends RefCounted
 
@@ -20,7 +17,7 @@ static func make_blank(p_capacity: int) -> FB__ByteBuffer:
   return FB__ByteBuffer.new(_allocate(p_capacity))
 
 static func _allocate(size: int) -> PackedByteArray:
-  var out = PackedByteArray()
+  var out: PackedByteArray = PackedByteArray()
   out.resize(size)
   # TODO: is this required...?
   out.fill(0x00)
@@ -35,12 +32,12 @@ func capacity() -> int:
 
 # Doubles the size of the buffer and copies the contents to the end
 func double_capacity() -> bool:
-  var _capacity = self.capacity()
+  var _capacity: int = self.capacity()
   if _capacity >= FB__Constants.MAX_BUFFER_SIZE:
     printerr("flatbuffers: cannot double_capacity beyond 2GB")
     return false
 
-  var new_buffer = _allocate(_capacity)
+  var new_buffer: PackedByteArray = _allocate(_capacity)
 
   self.bytes = new_buffer + bytes
   self.position = _capacity
